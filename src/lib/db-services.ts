@@ -176,7 +176,7 @@ export const getUserOrders = async (userId: string) => {
     const { data, error } = await supabase
       .from('orders')
       .select('*')
-      .eq('user_id', userId)
+      .or(`user_id.eq.${userId},phone_user_id.eq.${userId}`)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -232,23 +232,29 @@ export const saveInquiry = async (inquiryData: InquiryData) => {
   }
 
   try {
+    const insertData: any = {
+      user_type: inquiryData.userType,
+      location: inquiryData.location,
+      product_name: inquiryData.productName,
+      product_specification: inquiryData.productSpecification,
+      quantity: inquiryData.quantity,
+      contact_name: inquiryData.contactName,
+      contact_email: inquiryData.contactEmail,
+      contact_phone: inquiryData.contactPhone,
+      additional_requirements: inquiryData.additionalRequirements,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // If userId is a UUID (registered user), use phone_user_id
+    if (inquiryData.userId && inquiryData.userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      insertData.phone_user_id = inquiryData.userId;
+    }
+
     const { data, error } = await supabase
       .from('inquiries')
-      .insert({
-        user_id: inquiryData.userId,
-        user_type: inquiryData.userType,
-        location: inquiryData.location,
-        product_name: inquiryData.productName,
-        product_specification: inquiryData.productSpecification,
-        quantity: inquiryData.quantity,
-        contact_name: inquiryData.contactName,
-        contact_email: inquiryData.contactEmail,
-        contact_phone: inquiryData.contactPhone,
-        additional_requirements: inquiryData.additionalRequirements,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -273,8 +279,8 @@ export const getUserInquiries = async (userId: string) => {
     const { data, error } = await supabase
       .from('inquiries')
       .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .eq('phone_user_id', userId)
+      .order('created_at', { ascending: false});
 
     if (error) {
       throw error;

@@ -90,7 +90,7 @@ const Profile = () => {
 
   const formattedContact = useMemo(() => {
     if (!user) return "";
-    return formatContact(user.contact);
+    return formatContact(user.phoneNumber);
   }, [user]);
 
   if (isLoading) {
