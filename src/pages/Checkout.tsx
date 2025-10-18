@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, MapPin, Package, Upload, Loader2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Package, Upload, Loader2, CheckCircle2, Download } from 'lucide-react';
+import html2canvas from 'html2canvas';
 import { getCartItems, getCartTotal, clearCart } from '@/lib/cart-storage';
 import { generateOrderNumber, calculateEstimatedDelivery, calculateShippingCost } from '@/lib/order-storage';
 import { toast } from 'sonner';
@@ -38,6 +39,7 @@ const Checkout = () => {
   const [screenshotPreview, setScreenshotPreview] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [downloadingQR, setDownloadingQR] = useState(false);
 
   useEffect(() => {
     if (cartItems.length === 0) {
@@ -133,6 +135,35 @@ const Checkout = () => {
       setScreenshotPreview(reader.result as string);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleDownloadQR = async () => {
+    setDownloadingQR(true);
+    try {
+      const qrContainer = document.getElementById('qrContainer');
+      if (!qrContainer) {
+        toast.error('QR code not found');
+        return;
+      }
+
+      const canvas = await html2canvas(qrContainer, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        logging: false,
+      });
+
+      const link = document.createElement('a');
+      link.download = `WireBazaar-Payment-QR-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+
+      toast.success('QR code downloaded successfully!');
+    } catch (error) {
+      console.error('Error downloading QR:', error);
+      toast.error('Failed to download QR code');
+    } finally {
+      setDownloadingQR(false);
+    }
   };
 
   const handleCompletePayment = async () => {
@@ -253,13 +284,27 @@ const Checkout = () => {
                   </div>
                 ) : qrCodeUrl ? (
                   <div className="space-y-4">
-                    <div className="border rounded-lg p-6 bg-muted/30">
+                    <div id="qrContainer" className="border rounded-lg p-6 bg-white">
                       <img
                         src={qrCodeUrl}
                         alt="Payment QR Code"
                         className="max-w-sm mx-auto"
+                        crossOrigin="anonymous"
                       />
                     </div>
+
+                    <Button
+                      variant="outline"
+                      onClick={handleDownloadQR}
+                      disabled={downloadingQR}
+                      className="w-full"
+                    >
+                      {downloadingQR ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Downloading...</>
+                      ) : (
+                        <><Download className="mr-2 h-4 w-4" /> Save QR Code Screenshot</>
+                      )}
+                    </Button>
 
                     <div className="space-y-2">
                       <Label>Upload Payment Screenshot *</Label>

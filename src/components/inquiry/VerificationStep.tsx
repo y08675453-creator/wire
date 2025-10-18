@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Shield, Phone } from "lucide-react";
+import { Shield, Phone, Loader2 } from "lucide-react";
 import { InquiryData } from "@/pages/Inquiry";
 import { toast } from "sonner";
+import { sendOTP, verifyOTP } from "@/lib/phone-auth";
 
 interface VerificationStepProps {
   data: InquiryData;
@@ -17,24 +18,61 @@ const VerificationStep = ({ data, updateData, onNext }: VerificationStepProps) =
   const [phone, setPhone] = useState(data.phone);
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
-  const handleSendOTP = () => {
+  const handleSendOTP = async () => {
     if (phone.length !== 10) {
       toast.error("Please enter a valid 10-digit phone number");
       return;
     }
-    setOtpSent(true);
-    toast.success("OTP sent to your phone number");
+
+    setIsSending(true);
+    try {
+      const formattedPhone = phone.startsWith('+91') ? phone : `+91${phone}`;
+      const result = await sendOTP(formattedPhone);
+
+      if (result.success) {
+        setOtpSent(true);
+        toast.success(result.message || "OTP sent to your phone number");
+        if (result.otp) {
+          console.log(`OTP for inquiry: ${result.otp}`);
+        }
+      } else {
+        toast.error(result.message || "Failed to send OTP");
+      }
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      toast.error("Failed to send OTP. Please try again.");
+    } finally {
+      setIsSending(false);
+    }
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (otp.length !== 6) {
       toast.error("Please enter a valid 6-digit OTP");
       return;
     }
-    updateData({ phone, verified: true });
-    toast.success("Phone number verified successfully!");
-    setTimeout(onNext, 500);
+
+    setIsVerifying(true);
+    try {
+      const formattedPhone = phone.startsWith('+91') ? phone : `+91${phone}`;
+      const result = await verifyOTP(formattedPhone, otp);
+
+      if (result.success) {
+        updateData({ phone: formattedPhone, verified: true });
+        toast.success("Phone number verified successfully!");
+        setTimeout(onNext, 500);
+      } else {
+        toast.error(result.message || "Invalid OTP. Please try again.");
+      }
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      toast.error("Verification failed. Please try again.");
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   return (
@@ -66,8 +104,12 @@ const VerificationStep = ({ data, updateData, onNext }: VerificationStepProps) =
                 />
               </div>
               {!otpSent && (
-                <Button onClick={handleSendOTP} className="whitespace-nowrap">
-                  Send OTP
+                <Button onClick={handleSendOTP} disabled={isSending} className="whitespace-nowrap">
+                  {isSending ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</>
+                  ) : (
+                    "Send OTP"
+                  )}
                 </Button>
               )}
             </div>
@@ -99,16 +141,21 @@ const VerificationStep = ({ data, updateData, onNext }: VerificationStepProps) =
                 >
                   Change Number
                 </Button>
-                <Button onClick={handleVerify} className="flex-1 bg-gradient-to-r from-primary to-secondary">
-                  Verify
+                <Button onClick={handleVerify} disabled={isVerifying} className="flex-1 bg-gradient-to-r from-primary to-secondary">
+                  {isVerifying ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...</>
+                  ) : (
+                    "Verify"
+                  )}
                 </Button>
               </div>
 
               <button
                 onClick={handleSendOTP}
-                className="w-full text-sm text-primary hover:underline"
+                disabled={isSending}
+                className="w-full text-sm text-primary hover:underline disabled:opacity-50"
               >
-                Resend OTP
+                {isSending ? "Sending..." : "Resend OTP"}
               </button>
             </div>
           )}

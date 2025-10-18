@@ -19,16 +19,25 @@ const ConfirmationStep = ({ data }: ConfirmationStepProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
+    // Verify phone is verified before submission
+    if (!data.verified) {
+      toast.error("Please verify your phone number first");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      // Save to localStorage for offline access
       addInquiryToStorage(data);
       console.log("Submitting inquiry:", data);
 
-      // Save to Supabase if configured and user is authenticated
-      if (isSupabaseConfigured && user) {
-        await saveInquiry({
-          userId: user.id,
+      // Always save to Supabase if configured
+      if (isSupabaseConfigured) {
+        const userId = user?.id || `guest_${Date.now()}`;
+
+        const result = await saveInquiry({
+          userId: userId,
           userType: data.userType,
           location: data.address,
           productName: data.brand,
@@ -39,6 +48,12 @@ const ConfirmationStep = ({ data }: ConfirmationStepProps) => {
           contactPhone: data.phone,
           additionalRequirements: `Unit: ${data.unit}`
         });
+
+        console.log("Inquiry saved to database:", result);
+
+        if (!result) {
+          throw new Error("Failed to save inquiry to database");
+        }
       }
 
       toast.success("Inquiry submitted successfully! We'll contact you soon.");

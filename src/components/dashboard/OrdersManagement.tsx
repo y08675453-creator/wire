@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getAllOrdersForAdmin, updateOrderStatus, type Order } from '@/lib/order-storage';
+import { getAllOrders, updateOrderStatus as updateOrderStatusDB } from '@/lib/db-services';
 import { formatDistanceToNow, format } from 'date-fns';
 import { toast } from 'sonner';
 import { Package } from 'lucide-react';
@@ -20,8 +21,39 @@ export const OrdersManagement = () => {
   const loadOrders = async () => {
     setIsLoading(true);
     try {
-      const allOrders = await getAllOrdersForAdmin();
-      setOrders(allOrders);
+      // Load from Supabase first
+      const dbOrders = await getAllOrders();
+
+      if (dbOrders && dbOrders.length > 0) {
+        // Convert database orders to Order type
+        const convertedOrders: Order[] = dbOrders.map((dbOrder: any) => ({
+          id: dbOrder.id,
+          orderNumber: dbOrder.order_number,
+          userId: dbOrder.user_id,
+          customerInfo: {
+            name: dbOrder.customer_name,
+            email: dbOrder.customer_email,
+            phone: dbOrder.customer_phone,
+            address: dbOrder.customer_address,
+            pincode: dbOrder.customer_pincode
+          },
+          items: dbOrder.items || [],
+          subtotal: dbOrder.subtotal,
+          shippingCost: dbOrder.shipping_cost || 0,
+          totalAmount: dbOrder.total_amount,
+          status: dbOrder.status,
+          paymentStatus: dbOrder.payment_status,
+          paymentMethod: dbOrder.payment_method,
+          qrCodeData: dbOrder.qr_code_data,
+          createdAt: dbOrder.created_at,
+          estimatedDelivery: dbOrder.estimated_delivery
+        }));
+        setOrders(convertedOrders);
+      } else {
+        // Fallback to localStorage
+        const allOrders = await getAllOrdersForAdmin();
+        setOrders(allOrders);
+      }
     } catch (error) {
       console.error('Error loading orders:', error);
       toast.error('Failed to load orders');
@@ -33,10 +65,19 @@ export const OrdersManagement = () => {
   const handleStatusUpdate = async (orderId: string, newStatus: Order['status']) => {
     try {
       const order = orders.find(o => o.id === orderId);
+
+      // Update in Supabase database
+      await updateOrderStatusDB(orderId, newStatus, undefined, order?.userId);
+      console.log(`Order ${orderId} status updated to ${newStatus} in database`);
+
+      // Also update localStorage for offline support
       await updateOrderStatus(orderId, newStatus, undefined, order?.userId);
+
+      // Reload orders to show updated data
       await loadOrders();
-      toast.success('Order status updated');
+      toast.success('Order status updated successfully');
     } catch (error) {
+      console.error('Error updating order status:', error);
       toast.error('Failed to update order status');
     }
   };
@@ -45,10 +86,18 @@ export const OrdersManagement = () => {
     const order = orders.find(o => o.id === orderId);
     if (order) {
       try {
+        // Update in Supabase database
+        await updateOrderStatusDB(orderId, order.status, newPaymentStatus, order.userId);
+        console.log(`Order ${orderId} payment status updated to ${newPaymentStatus} in database`);
+
+        // Also update localStorage for offline support
         await updateOrderStatus(orderId, order.status, newPaymentStatus, order.userId);
+
+        // Reload orders to show updated data
         await loadOrders();
-        toast.success('Payment status updated');
+        toast.success('Payment status updated successfully');
       } catch (error) {
+        console.error('Error updating payment status:', error);
         toast.error('Failed to update payment status');
       }
     }

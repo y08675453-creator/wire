@@ -10,6 +10,42 @@ interface RequestBody {
   phoneNumber: string;
 }
 
+function normalizeIndianPhone(phone: string): string {
+  let cleaned = phone.replace(/\D/g, '');
+  
+  if (cleaned.startsWith('0')) {
+    cleaned = cleaned.substring(1);
+  }
+  
+  if (cleaned.startsWith('91')) {
+    return `+${cleaned}`;
+  }
+  
+  if (cleaned.length === 10) {
+    return `+91${cleaned}`;
+  }
+  
+  if (phone.startsWith('+91')) {
+    return phone;
+  }
+  
+  return `+91${cleaned}`;
+}
+
+function isValidIndianPhone(phone: string): boolean {
+  const cleaned = phone.replace(/\D/g, '');
+  
+  if (cleaned.length === 10) {
+    return /^[6-9]\d{9}$/.test(cleaned);
+  }
+  
+  if (cleaned.length === 12 && cleaned.startsWith('91')) {
+    return /^91[6-9]\d{9}$/.test(cleaned);
+  }
+  
+  return false;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -39,6 +75,19 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (!isValidIndianPhone(phoneNumber)) {
+      return new Response(
+        JSON.stringify({ success: false, message: 'Please enter a valid Indian phone number (10 digits starting with 6-9)' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    const normalizedPhone = normalizeIndianPhone(phoneNumber);
+    console.log(`Normalized phone: ${phoneNumber} -> ${normalizedPhone}`);
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 5);
@@ -46,7 +95,7 @@ Deno.serve(async (req: Request) => {
     const { error: dbError } = await supabase
       .from('otp_codes')
       .insert({
-        phone_number: phoneNumber,
+        phone_number: normalizedPhone,
         otp_code: otp,
         expires_at: expiresAt.toISOString(),
         verified: false,
@@ -75,7 +124,7 @@ Deno.serve(async (req: Request) => {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: new URLSearchParams({
-            To: phoneNumber,
+            To: normalizedPhone,
             From: twilioPhoneNumber,
             Body: message,
           }),
@@ -84,12 +133,12 @@ Deno.serve(async (req: Request) => {
         if (!twilioResponse.ok) {
           const errorData = await twilioResponse.text();
           console.error('Twilio error:', errorData);
-          console.log(`OTP for ${phoneNumber}: ${otp} (Twilio failed, showing in logs)`);
+          console.log(`OTP for ${normalizedPhone}: ${otp} (Twilio failed, showing in logs)`);
           
           return new Response(
             JSON.stringify({
               success: true,
-              message: `OTP generated. Check console for code (Twilio error).`,
+              message: `OTP generated. Check console for code (SMS delivery failed).`,
               otp: otp,
             }),
             {
@@ -102,7 +151,7 @@ Deno.serve(async (req: Request) => {
         return new Response(
           JSON.stringify({
             success: true,
-            message: `OTP sent successfully to ${phoneNumber}`,
+            message: `OTP sent successfully to ${normalizedPhone}`,
           }),
           {
             status: 200,
@@ -111,7 +160,7 @@ Deno.serve(async (req: Request) => {
         );
       } catch (twilioError) {
         console.error('Twilio request error:', twilioError);
-        console.log(`OTP for ${phoneNumber}: ${otp} (Twilio failed, showing in logs)`);
+        console.log(`OTP for ${normalizedPhone}: ${otp} (Twilio failed, showing in logs)`);
         
         return new Response(
           JSON.stringify({
@@ -126,7 +175,7 @@ Deno.serve(async (req: Request) => {
         );
       }
     } else {
-      console.log(`OTP for ${phoneNumber}: ${otp} (Twilio not configured)`);
+      console.log(`OTP for ${normalizedPhone}: ${otp} (Twilio not configured)`);
       
       return new Response(
         JSON.stringify({
