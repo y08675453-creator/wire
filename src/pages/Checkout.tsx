@@ -10,6 +10,7 @@ import { getCartItems, getCartTotal, clearCart } from '@/lib/cart-storage';
 import { generateOrderNumber, calculateEstimatedDelivery, calculateShippingCost } from '@/lib/order-storage';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { useUserAuth } from '@/context/UserAuthContext';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -20,6 +21,7 @@ import {
 
 const Checkout = () => {
   const navigate = useNavigate();
+  const { user } = useUserAuth();
   const cartItems = getCartItems();
   const subtotal = getCartTotal();
 
@@ -143,7 +145,7 @@ const Checkout = () => {
 
     try {
       const orderNumber = generateOrderNumber();
-      const userId = `guest_${Date.now()}`;
+      const userId = user ? user.id : `guest_${Date.now()}`;
 
       const fileExt = screenshot.name.split('.').pop();
       const fileName = `payment-${orderNumber}-${Date.now()}.${fileExt}`;
@@ -164,25 +166,31 @@ const Checkout = () => {
         .from('payment-images')
         .getPublicUrl(filePath);
 
+      const orderInsert: any = {
+        user_id: userId,
+        order_number: orderNumber,
+        customer_name: name,
+        customer_email: email,
+        customer_phone: phone,
+        customer_address: address,
+        customer_pincode: pincode,
+        items: cartItems,
+        subtotal: subtotal,
+        shipping_cost: shippingCost,
+        total_amount: total,
+        status: 'pending_verification',
+        payment_status: 'pending',
+        payment_method: 'qr_code',
+        estimated_delivery: calculateEstimatedDelivery(pincode)
+      };
+
+      if (user) {
+        orderInsert.phone_user_id = user.id;
+      }
+
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
-        .insert({
-          user_id: userId,
-          order_number: orderNumber,
-          customer_name: name,
-          customer_email: email,
-          customer_phone: phone,
-          customer_address: address,
-          customer_pincode: pincode,
-          items: cartItems,
-          subtotal: subtotal,
-          shipping_cost: shippingCost,
-          total_amount: total,
-          status: 'pending_verification',
-          payment_status: 'pending',
-          payment_method: 'qr_code',
-          estimated_delivery: calculateEstimatedDelivery(pincode)
-        })
+        .insert(orderInsert)
         .select()
         .single();
 

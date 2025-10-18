@@ -4,31 +4,39 @@ export interface PhoneAuthResult {
   success: boolean;
   message: string;
   userId?: string;
+  otp?: string;
 }
 
 export const sendOTP = async (phoneNumber: string): Promise<PhoneAuthResult> => {
   try {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 5);
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-    const { error } = await supabase
-      .from('otp_codes')
-      .insert({
-        phone_number: phoneNumber,
-        otp_code: otp,
-        expires_at: expiresAt.toISOString(),
-        verified: false
-      });
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-otp`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ phoneNumber }),
+    });
 
-    if (error) {
-      console.error('Error sending OTP:', error);
-      return { success: false, message: 'Failed to send OTP' };
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      console.error('Error sending OTP:', result);
+      return { success: false, message: result.message || 'Failed to send OTP' };
     }
 
-    console.log(`OTP for ${phoneNumber}: ${otp}`);
+    if (result.otp) {
+      console.log(`OTP for ${phoneNumber}: ${result.otp}`);
+    }
 
-    return { success: true, message: `OTP sent to ${phoneNumber}. Check console for OTP code.` };
+    return {
+      success: true,
+      message: result.message,
+      otp: result.otp
+    };
   } catch (error) {
     console.error('Error in sendOTP:', error);
     return { success: false, message: 'An error occurred while sending OTP' };

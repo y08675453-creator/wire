@@ -5,9 +5,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Search, ShoppingCart } from 'lucide-react';
-import { getProducts, brands, categories, type Product } from '@/lib/products-data';
+import { ArrowLeft, Search, ShoppingCart, Loader2 } from 'lucide-react';
+import { brands, categories, type Product } from '@/lib/products-data';
+import { getProducts } from '@/lib/product-service';
 import { getCartItemCount } from '@/lib/cart-storage';
+import { toast } from 'sonner';
 
 const Products = () => {
   const navigate = useNavigate();
@@ -16,6 +18,7 @@ const Products = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [cartCount, setCartCount] = useState(() => getCartItemCount());
   const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadProducts();
@@ -28,8 +31,17 @@ const Products = () => {
     return () => window.removeEventListener('products-updated', handleProductsUpdate);
   }, []);
 
-  const loadProducts = () => {
-    setProducts(getProducts());
+  const loadProducts = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getProducts();
+      setProducts(data);
+    } catch (error) {
+      console.error('Failed to load products:', error);
+      toast.error('Failed to load products');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filteredProducts = useMemo(() => {

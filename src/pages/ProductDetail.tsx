@@ -7,26 +7,48 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Download, ShoppingCart, Package } from 'lucide-react';
-import { getProductById, type Product } from '@/lib/products-data';
+import { ArrowLeft, Download, ShoppingCart, Package, Loader2 } from 'lucide-react';
+import { type Product } from '@/lib/products-data';
+import { getProductById } from '@/lib/product-service';
 import { addToCart } from '@/lib/cart-storage';
 import { toast } from 'sonner';
 
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [product, setProduct] = useState<Product | undefined>(undefined);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (id) {
-      const foundProduct = getProductById(id);
-      setProduct(foundProduct);
-    }
+    loadProduct();
   }, [id]);
+
+  const loadProduct = async () => {
+    if (!id) return;
+
+    setIsLoading(true);
+    try {
+      const foundProduct = await getProductById(id);
+      setProduct(foundProduct);
+    } catch (error) {
+      console.error('Failed to load product:', error);
+      toast.error('Failed to load product');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [quantity, setQuantity] = useState<string>('1');
   const [unitType, setUnitType] = useState<'metres' | 'coils'>(product?.unitType || 'metres');
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   if (!product) {
     return (

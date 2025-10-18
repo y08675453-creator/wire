@@ -12,22 +12,78 @@ export const supabase = isSupabaseConfigured
 export type Database = {
   public: {
     Tables: {
-      users: {
+      products: {
         Row: {
           id: string;
-          contact: string;
+          name: string;
+          brand: string;
+          category: string;
+          colors: string[];
+          description: string;
+          specifications: any;
+          base_price: string;
+          unit_type: string;
+          stock_quantity: number;
+          image_url: string;
+          brochure_url: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          brand: string;
+          category: string;
+          colors?: string[];
+          description?: string;
+          specifications?: any;
+          base_price: string;
+          unit_type?: string;
+          stock_quantity?: number;
+          image_url?: string;
+          brochure_url?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          brand?: string;
+          category?: string;
+          colors?: string[];
+          description?: string;
+          specifications?: any;
+          base_price?: string;
+          unit_type?: string;
+          stock_quantity?: number;
+          image_url?: string;
+          brochure_url?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      phone_users: {
+        Row: {
+          id: string;
+          phone_number: string;
+          phone_verified: boolean;
           last_login_at: string;
           created_at: string;
         };
         Insert: {
           id?: string;
-          contact: string;
+          phone_number: string;
+          phone_verified?: boolean;
           last_login_at?: string;
           created_at?: string;
         };
         Update: {
           id?: string;
-          contact?: string;
+          phone_number?: string;
+          phone_verified?: boolean;
           last_login_at?: string;
           created_at?: string;
         };
@@ -35,10 +91,9 @@ export type Database = {
       user_profiles: {
         Row: {
           id: string;
-          user_id: string;
+          phone_user_id: string;
           full_name: string | null;
           email: string | null;
-          phone_number: string | null;
           address: string | null;
           city: string | null;
           state: string | null;
@@ -52,10 +107,9 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          user_id: string;
+          phone_user_id: string;
           full_name?: string | null;
           email?: string | null;
-          phone_number?: string | null;
           address?: string | null;
           city?: string | null;
           state?: string | null;
@@ -69,10 +123,9 @@ export type Database = {
         };
         Update: {
           id?: string;
-          user_id?: string;
+          phone_user_id?: string;
           full_name?: string | null;
           email?: string | null;
-          phone_number?: string | null;
           address?: string | null;
           city?: string | null;
           state?: string | null;
@@ -89,6 +142,7 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
+          phone_user_id: string | null;
           order_number: string;
           customer_name: string;
           customer_email: string;
@@ -104,8 +158,6 @@ export type Database = {
           status: string;
           payment_status: string;
           payment_method: string | null;
-          qr_code_data: string | null;
-          transaction_id: string | null;
           estimated_delivery: string | null;
           notes: string | null;
           created_at: string;
@@ -114,6 +166,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          phone_user_id?: string | null;
           order_number: string;
           customer_name: string;
           customer_email: string;
@@ -129,8 +182,6 @@ export type Database = {
           status?: string;
           payment_status?: string;
           payment_method?: string | null;
-          qr_code_data?: string | null;
-          transaction_id?: string | null;
           estimated_delivery?: string | null;
           notes?: string | null;
           created_at?: string;
@@ -139,6 +190,7 @@ export type Database = {
         Update: {
           id?: string;
           user_id?: string;
+          phone_user_id?: string | null;
           order_number?: string;
           customer_name?: string;
           customer_email?: string;
@@ -154,8 +206,6 @@ export type Database = {
           status?: string;
           payment_status?: string;
           payment_method?: string | null;
-          qr_code_data?: string | null;
-          transaction_id?: string | null;
           estimated_delivery?: string | null;
           notes?: string | null;
           created_at?: string;
@@ -165,7 +215,7 @@ export type Database = {
       inquiries: {
         Row: {
           id: string;
-          user_id: string;
+          phone_user_id: string | null;
           user_type: string;
           location: string;
           product_name: string | null;
@@ -181,7 +231,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          user_id: string;
+          phone_user_id?: string | null;
           user_type: string;
           location: string;
           product_name?: string | null;
@@ -197,7 +247,7 @@ export type Database = {
         };
         Update: {
           id?: string;
-          user_id?: string;
+          phone_user_id?: string | null;
           user_type?: string;
           location?: string;
           product_name?: string | null;
@@ -210,6 +260,67 @@ export type Database = {
           status?: string;
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      payment_qr_codes: {
+        Row: {
+          id: string;
+          image_url: string;
+          payment_details: any;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          image_url: string;
+          payment_details?: any;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          image_url?: string;
+          payment_details?: any;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      payment_screenshots: {
+        Row: {
+          id: string;
+          order_id: string;
+          user_id: string;
+          screenshot_url: string;
+          verification_status: string;
+          verified_by: string | null;
+          verified_at: string | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          user_id: string;
+          screenshot_url: string;
+          verification_status?: string;
+          verified_by?: string | null;
+          verified_at?: string | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          user_id?: string;
+          screenshot_url?: string;
+          verification_status?: string;
+          verified_by?: string | null;
+          verified_at?: string | null;
+          notes?: string | null;
+          created_at?: string;
         };
       };
     };
